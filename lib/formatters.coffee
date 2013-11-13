@@ -1,0 +1,22 @@
+
+errors = require './errors'
+
+module.exports =
+    'application/json': (req, res, body) ->
+        if body instanceof errors.HttpError
+            body = body.serialize()
+            res.statusCode = body.code
+        else if body instanceof Error
+            if errors.utils.isRestifyError(body)
+                body = errors.utils.createFromRestifyError(body)
+                res.statusCode = body.code
+            else
+                console.error("Unhandled internal error type.")
+        else if Buffer.isBuffer body
+            body = body.toString('base64')
+        data = JSON.stringify body
+
+        if not res.getHeader('Content-Length')
+            res.setHeader 'Content-Length', Buffer.byteLength(data)
+
+        return data

@@ -1,6 +1,9 @@
 
-restify = require 'restify'
-swagger = require 'swagger-node-restify'
+{Buffer}   = require 'buffer'
+restify    = require 'restify'
+swagger    = require 'swagger-node-restify'
+formatters = require './formatters'
+errors     = require './errors'
 
 
 copy = (object) ->
@@ -8,6 +11,7 @@ copy = (object) ->
 
 
 module.exports =
+    errors: errors
 
     createService: (serviceId, version, handlers, models) ->
         throw new Error "`serviceId` parameter is required." if not serviceId
@@ -15,7 +19,12 @@ module.exports =
         throw new Error "`version` parameter is required." if not version
         throw new Error "`models` parameter is required." if not models
 
-        app = restify.createServer()
+        app = restify.createServer {formatters}
+
+        app.on 'uncaughtException', (req, res, route, error) ->
+            console.error "Uncaught Exception:"
+            console.error error.stack()
+            res.send 500
 
         app.use restify.acceptParser app.acceptable
         app.use restify.CORS()
