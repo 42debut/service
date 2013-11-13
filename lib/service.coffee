@@ -21,11 +21,6 @@ module.exports =
 
         app = restify.createServer {formatters}
 
-        app.on 'uncaughtException', (req, res, route, error) ->
-            console.error "Uncaught Exception:"
-            console.error error.stack()
-            res.send 500
-
         app.use restify.acceptParser app.acceptable
         app.use restify.CORS()
         app.use restify.fullResponse()
