@@ -53,8 +53,37 @@ module.exports.utils =
             codeMap[httpError.code] = HttpError
         return (errorCode) -> codeMap[errorCode]
 
+
+    isSwaggerError: (error) ->
+        (error.statusCode isnt undefined) and \
+        (error.we_cause isnt undefined)
+
+
     isRestifyError: (error) ->
-        error.statusCode isnt undefined
+        (error.statusCode isnt undefined) and \
+        (error.we_cause is undefined)
+
+
+    createFromSwaggerError: (error) ->
+        if not @isSwaggerError(error)
+            throw new Error("Error object is not a swagger error")
+
+        HttpErrorClass = @getHttpErrorFromCode(error.statusCode)
+        if not HttpErrorClass
+            throw new Error("Could not map swagger error with code `#{error.statusCode}` to an HttpError class.")
+
+        httpError = do ->
+            options = {message:error.message, code:error.statusCode}
+            return new HttpErrorClass options
+
+        switch httpError.code
+            when 404 then do ->
+                resource = httpError.message
+                httpError.message = "Resource `#{resource}` does not exist."
+                httpError.data.resource = resource
+
+        return httpError
+
 
     createFromRestifyError: (error) ->
         if not @isRestifyError(error)
