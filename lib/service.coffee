@@ -62,7 +62,7 @@ module.exports =
 
 class Service
     constructor: (@id, @version, @app, @swagger) ->
-    listen: (port, host) ->
+    listen: (port, host, base) ->
         port ?= 80
         host ?= 'localhost'
         console.log "Listening on http://#{host}:#{port}\n"
@@ -70,6 +70,6 @@ class Service
         console.log "Docs can be found at:"
         console.log "http://#{host}:#{port}/docs"
 
-        @swagger.configure "http://#{host}:#{port}", "#{@version}"
+        @swagger.configure base or "http://#{host}:#{port}", "#{@version}"
         @app.listen port, host
         return @
