@@ -18,7 +18,7 @@
   "author": "Nicolas Porter <nick@42debut.com> (http://nicolasporter.ca)",
   "license": "MIT",
   "dependencies": {
-    "restify": "~2.6.0",
+    "restify": "~2.5.0",
     "swagger-node-restify": "~0.1.1",
     "lodash": "~2.2.1",
     "coffee-script": "~1.6.3",
