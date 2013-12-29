@@ -1,23 +1,22 @@
 
-{Buffer}   = require 'buffer'
 restify    = require 'restify'
 swagger    = require 'swagger-node-restify'
 formatters = require './formatters'
 errors     = require './errors'
 
 
-copy = (object) ->
-    JSON.parse JSON.stringify object
-
-
 module.exports =
+
+    restify: restify
+
+    swagger: swagger
+
     errors: errors
 
-    createService: (serviceId, version, handlers, models) ->
+    createService: (serviceId, version, handlers, models = {}) ->
         throw new Error "`serviceId` parameter is required." if not serviceId
         throw new Error "`handlers` parameter is required." if not handlers
         throw new Error "`version` parameter is required." if not version
-        throw new Error "`models` parameter is required." if not models
 
         app = restify.createServer {formatters}
 
@@ -31,6 +30,7 @@ module.exports =
         swagger.addModels {models}
         swagger.setAppHandler app
 
+        # Setup route for the swagger ui
         app.pre (req, res, next) ->
             if req.url in ['/docs', '/docs/']
                 res.header 'Location', '/docs/index.html'
