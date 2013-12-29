@@ -1,4 +1,8 @@
 
+Promise = require 'bluebird'
+Promise.longStackTraces()
+
+bunyan     = require 'bunyan'
 restify    = require 'restify'
 swagger    = require 'swagger-node-restify'
 formatters = require './formatters'
@@ -13,63 +17,113 @@ module.exports =
 
     errors: errors
 
-    createService: (serviceId, version, handlers, models = {}) ->
-        throw new Error "`serviceId` parameter is required." if not serviceId
+    Service: ({name, version, handlers, models}) ->
+        throw new Error "`name` parameter is required."     if not name
         throw new Error "`handlers` parameter is required." if not handlers
-        throw new Error "`version` parameter is required." if not version
+        throw new Error "`version` parameter is required."  if not version
 
-        app = restify.createServer {formatters}
+        server = restify.createServer {formatters}
 
-        app.use restify.acceptParser app.acceptable
-        app.use restify.CORS()
-        app.use restify.fullResponse()
-        app.use restify.bodyParser()
-        app.use restify.queryParser()
+        server.use restify.acceptParser server.acceptable
+        server.use restify.CORS()
+        server.use restify.fullResponse()
+        server.use restify.bodyParser()
+        server.use restify.queryParser()
 
         swagger.configureSwaggerPaths '', '/api/docs', ''
         swagger.addModels {models}
-        swagger.setAppHandler app
+        swagger.setAppHandler server
 
-        # Setup route for the swagger ui
-        app.pre (req, res, next) ->
+        server.pre (req, res, next) ->
             if req.url in ['/docs', '/docs/']
                 res.header 'Location', '/docs/index.html'
                 res.send 302
             return next()
 
-        app.get /^\/docs(\/.*)?$/, restify.serveStatic
+        server.get /^\/docs(\/.*)?$/, restify.serveStatic
             directory: __dirname + '/..'
             default:  'index.html'
 
-        # Patching handlers
-        Object.keys(handlers).forEach (handlerName) ->
-            handler = handlers[handlerName]
-            handler.spec.nickname = handlerName
+        # server.on 'after', restify.auditLogger
+        #   log: bunyan.createLogger
+        #     name: 'audit',
+        #     stream: process.stdout
 
-        # Registering handlers
-        console.log "Registering handlers:\n"
+        handlers = processHandlers(handlers)
+
+        console.log "Available Swagger Endpoints:\n"
         Object.keys(handlers).forEach (handlerName) ->
             handler = handlers[handlerName]
-            method  = handler.spec.method
+            console.log "  #{handler.spec.method} #{handler.spec.path}"
+            console.log "  --> #{handler.spec.summary}\n"
+
+        return new Service {name, version, server, swagger, handlers, models}
+
+
+processHandlers = do ->
+
+    processors = [
+
+        # Validate handler, requires `spec` and `action` property.
+        (name, handler) ->
+            {spec, action} = handler
+            throw new Error("Missing `spec` property in handler `#{name}`") if not spec
+            throw new Error("Missing `action` property in handler `#{name}`") if not action
+            return handler
+
+        # Patch handler nickname, if needed
+        (name, handler) ->
+            handler.spec.nickname ?= name
+            return handler
+
+        # Wrap handler action for promise support and better error handling
+        (name, handler) ->
+            {action} = handler
+            handler.action = (req, res, next) ->
+                try
+                    Promise.cast(action(req)).done (result) ->
+                        res.send 200, result
+                        next()
+                catch error
+                    # FIXME: Handle our own http error types.
+                    console.error error.stack
+                    httpError = new errors.HttpInternalServerError()
+                    res.send httpError.code, httpError
+                    next()
+            return handler
+
+        # Register handler with swagger
+        (name, handler) ->
+            {method} = handler.spec
             fn = swagger["add#{method}"]
-            throw new Error "Handler spec has invalid method `#{method}`." if not fn
-            console.log "#{handler.spec.method} #{handler.spec.path}"
-            console.log "#{handler.spec.summary}\n"
+            throw new Error "Handler `#{name}` spec has invalid method `#{method}`." if not fn
             fn.call swagger, handler
+            return handler
+    ]
 
-        return new Service serviceId, version, app, swagger
+    return (handlers) ->
+        Object.keys(handlers).reduce ((result, handlerName) ->
+            handler = handlers[handlerName]
+            processors.forEach (fn) ->
+                handler = fn(handlerName, handler)
+            result[handlerName] = handler
+            return result
+        ), {}
+
 
 
 class Service
-    constructor: (@id, @version, @app, @swagger) ->
+
+    constructor: ({@name, @version, @server, @swagger, @handlers, @models}) ->
+
     listen: (port, host, base) ->
         port ?= 80
         host ?= 'localhost'
-        console.log "Listening on http://#{host}:#{port}\n"
+        console.log "`#{@name}` listening on http://#{host}:#{port}\n"
 
         console.log "Docs can be found at:"
-        console.log "http://#{host}:#{port}/docs"
+        console.log "http://#{host}:#{port}/docs\n\n"
 
         @swagger.configure base or "http://#{host}:#{port}", "#{@version}"
-        @app.listen port, host
+        @server.listen port, host
         return @
