@@ -1,53 +1,13 @@
 
-# To add a new http error class, just extend from `HttpError`
-# and add a `code` property.
 
-class HttpError extends Error
-    constructor: (options = {}) ->
-        @code    = options.code    or @code or 500
-        @message = options.message or 'Server Error'
-        @data    = options.data    or {}
-        @type    = options.type    or @constructor.name
-    serialize: ->
-        result = {@code, @message, @type}
-        result.data = @data if @data
-        return result
-    toString: ->
-        JSON.stringify @serialize(), null, 2
+httpErrors = require './errors-http'
 
 
-class HttpNotFoundError extends HttpError
-    code: 404
-
-
-class HttpBadRequestError extends HttpError
-    code: 400
-
-
-class HttpMethodNotAllowedError extends HttpError
-    code: 405
-
-
-class HttpInternalServerError extends HttpError
-    code: 500
-
-
-# Don't forget to add your new error class to this object,
-# otherwise it won't be exported.
-module.exports = errorTypes = {
-    HttpError
-    HttpNotFoundError
-    HttpBadRequestError
-    HttpInternalServerError
-    HttpMethodNotAllowedError
-}
-
-
-module.exports.utils =
+module.exports =
 
     getHttpErrorFromCode: do ->
         codeMap = {}
-        for type, HttpError of errorTypes
+        for type, HttpError of httpErrors
             httpError = new HttpError()
             continue if httpError.code is undefined
             codeMap[httpError.code] = HttpError
@@ -110,3 +70,4 @@ module.exports.utils =
                     httpError.data.method = method
 
         return httpError
+

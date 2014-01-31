@@ -2,11 +2,12 @@
 Promise = require 'bluebird'
 Promise.longStackTraces()
 
-bunyan     = require 'bunyan'
-restify    = require 'restify'
-swagger    = require 'swagger-node-restify'
-formatters = require './formatters'
-errors     = require './errors'
+{EventEmitter} = require 'events'
+bunyan         = require 'bunyan'
+restify        = require 'restify'
+swagger        = require 'swagger-node-restify'
+formatters     = require './formatters'
+errors         = require './errors'
 
 
 module.exports =
@@ -31,7 +32,7 @@ module.exports =
         server.use restify.queryParser()
 
         swagger.configureSwaggerPaths '', '/api/docs', ''
-        swagger.addModels {models}
+        swagger.addModels {models:(models or {})}
         swagger.setAppHandler server
 
         server.pre (req, res, next) ->
@@ -44,6 +45,11 @@ module.exports =
             directory: __dirname + '/..'
             default:  'index.html'
 
+        # server.on 'uncaughtException', (req, res, route, error) ->
+        #     console.error '--> Uncaught Exception in route'
+        #     console.error error.trace or error
+        #     res.send error
+
         # server.on 'after', restify.auditLogger
         #   log: bunyan.createLogger
         #     name: 'audit',
@@ -51,13 +57,29 @@ module.exports =
 
         handlers = processHandlers(handlers)
 
-        console.log "Available Swagger Endpoints:\n"
+        console.log "\nAvailable Swagger Endpoints:\n"
         Object.keys(handlers).forEach (handlerName) ->
             handler = handlers[handlerName]
             console.log "  #{handler.spec.method} #{handler.spec.path}"
-            console.log "  --> #{handler.spec.summary}\n"
+            console.log "  --> #{handler.spec.summary or handler.spec.description}\n"
 
-        return new Service {name, version, server, swagger, handlers, models}
+        service = new Service {name, version, server, swagger, handlers, models}
+
+        shutDownService = (signal) ->
+            console.log "#{signal} received, shutting down server gracefully."
+            service.close().then ->
+                console.log "All connections closed successfully."
+
+        handleSignal = (signal) ->
+            process.once signal, ->
+                shutDownService(signal).finally ->
+                    process.kill(process.pid, signal)
+
+        handleSignal('SIGTERM')
+        handleSignal('SIGINT')
+        handleSignal('SIGUSR2')
+
+        return service
 
 
 processHandlers = do ->
@@ -81,15 +103,30 @@ processHandlers = do ->
             {action} = handler
             handler.action = (req, res, next) ->
                 try
-                    Promise.cast(action(req)).done (result) ->
+                    result = action.call(handler, req)
+                    Promise.cast(result).done (result) ->
                         res.send 200, result
                         next()
                 catch error
-                    # FIXME: Handle our own http error types.
-                    console.error error.stack
-                    httpError = new errors.HttpInternalServerError()
+
+                    if error instanceof (errors.http.HttpError)
+                        console.error "--> INFO: HTTP error in action of handler `#{name}`."
+                        httpError = error
+                    else if error instanceof (errors.controller.InternalError)
+                        console.error "--> WARNING: Internal controller error in action of handler `#{name}`."
+                        httpError = error.toHttpError()
+                    else if error instanceof (errors.controller.ControllerError)
+                        console.error "--> INFO: Controller error in action of handler `#{name}`."
+                        httpError = error.toHttpError()
+                        httpError.type = error.type
+                    else
+                        console.error "--> WARNING: Unhandled error in action of handler `#{name}`."
+                        httpError = new errors.http.HttpInternalServerError()
+
+                    console.error error.stack or error + '\n'
                     res.send httpError.code, httpError
                     next()
+
             return handler
 
         # Register handler with swagger
@@ -112,7 +149,7 @@ processHandlers = do ->
 
 
 
-class Service
+class Service extends EventEmitter
 
     constructor: ({@name, @version, @server, @swagger, @handlers, @models}) ->
 
@@ -127,3 +164,15 @@ class Service
         @swagger.configure base or "http://#{host}:#{port}", "#{@version}"
         @server.listen port, host
         return @
+
+    close: (timeout = 30000) ->
+        timeout = Math.max(0, parseInt(timeout)) or \
+        throw new Error("`timeout` argument `#{timeout}` is not valid.")
+        deferred = Promise.defer()
+        @server.close ->
+            clearTimeout(timer)
+            return deferred.resolve()
+        timer = setTimeout ->
+            return deferred.reject('timed-out')
+        , timeout
+        return deferred.promise

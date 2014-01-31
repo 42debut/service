@@ -6,7 +6,7 @@ module.exports =
 
     'application/json': (req, res, body) ->
 
-        if body instanceof errors.HttpError
+        if body instanceof errors.http.HttpError
             body = body.serialize()
             res.statusCode = body.code
 
