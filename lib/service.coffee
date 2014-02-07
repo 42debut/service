@@ -101,14 +101,13 @@ processHandlers = do ->
         # Wrap handler action for promise support and better error handling
         (name, handler) ->
             {action} = handler
-            handler.action = (req, res, next) ->
-                try
-                    result = action.call(handler, req)
-                    Promise.cast(result).done (result) ->
-                        res.send 200, result
-                        next()
-                catch error
 
+            handler.action = (req, res, next) ->
+                action(req).bind(handler)
+                .then (result) ->
+                    res.send 200, result
+                    next()
+                .catch (error) ->
                     if error instanceof (errors.http.HttpError)
                         console.error "--> INFO: HTTP error in action of handler `#{name}`."
                         httpError = error
@@ -122,7 +121,6 @@ processHandlers = do ->
                     else
                         console.error "--> WARNING: Unhandled error in action of handler `#{name}`."
                         httpError = new errors.http.HttpInternalServerError()
-
                     console.error error.stack or error + '\n'
                     res.send httpError.code, httpError
                     next()
