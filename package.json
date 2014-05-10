@@ -23,6 +23,7 @@
     "lodash": "~2.2.1",
     "coffee-script": "~1.6.3",
     "send": "~0.1.4",
-    "bunyan": "~0.22.1"
+    "bunyan": "~0.22.1",
+    "bluebird": "~1.2.4"
   }
 }
