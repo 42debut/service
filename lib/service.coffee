@@ -31,6 +31,13 @@ module.exports =
         server.use restify.bodyParser()
         server.use restify.queryParser()
 
+        server.use (req, res, next) ->
+            req.user = do ->
+                name:         req.headers['42-name']
+                organization: req.headers['42-org']
+                role:         req.headers['42-role']
+            next()
+
         swagger.configureSwaggerPaths '', '/api/docs', ''
         swagger.addModels {models:(models or {})}
         swagger.setAppHandler server
