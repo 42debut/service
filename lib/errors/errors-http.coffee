@@ -24,6 +24,14 @@ class HttpBadRequestError extends HttpError
     code: 400
 
 
+class HttpUnauthorizedError extends HttpError
+    code: 401
+
+
+class HttpForbiddenError extends HttpError
+    code: 403
+
+
 class HttpMethodNotAllowedError extends HttpError
     code: 405
 
@@ -36,6 +44,8 @@ module.exports = {
     HttpError
     HttpNotFoundError
     HttpBadRequestError
-    HttpInternalServerError
+    HttpUnauthorizedError
+    HttpForbiddenError
     HttpMethodNotAllowedError
+    HttpInternalServerError
 }
