@@ -19,7 +19,7 @@
   "license": "MIT",
   "dependencies": {
     "restify": "~2.5.0",
-    "swagger-node-restify": "~0.1.1",
+    "swagger-node-restify": "git://github.com/42debut/service.git#master",
     "lodash": "~2.2.1",
     "coffee-script": "~1.6.3",
     "send": "~0.1.4",
