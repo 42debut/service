@@ -67,7 +67,7 @@ module.exports =
         console.log "\nAvailable Swagger Endpoints:\n"
         Object.keys(handlers).forEach (handlerName) ->
             handler = handlers[handlerName]
-            console.log "  #{handler.spec.method} #{handler.spec.path}"
+            console.log "  #{handler.spec.method} #{handler.spec.path} (#{handler.spec.nickname})"
             console.log "  --> #{handler.spec.summary or handler.spec.description}\n"
 
         service = new Service {name, version, server, swagger, handlers, models}
