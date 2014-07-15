@@ -1,6 +1,6 @@
 {
   "name": "service",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A simple framework for 42 services.",
   "main": "index.js",
   "directories": {

@@ -25,6 +25,14 @@ module.exports =
 
         server = restify.createServer {formatters}
 
+        headers =
+            name: '42-name'
+            org:  '42-org'
+            role: '42-org'
+
+        Object.keys(headers).forEach (key) ->
+            restify.CORS.ALLOW_HEADERS.push(headers[key])
+
         server.use restify.acceptParser server.acceptable
         server.use restify.CORS()
         server.use restify.fullResponse()
@@ -32,10 +40,10 @@ module.exports =
         server.use restify.queryParser()
 
         server.use (req, res, next) ->
-            req.user = do ->
-                name:         req.headers['42-name']
-                organization: req.headers['42-org']
-                role:         req.headers['42-role']
+            req.user = Object.keys(headers).reduce ((result, key) ->
+                result[key] = req.headers[key]
+                return result
+            ), {}
             next()
 
         swagger.configureSwaggerPaths '', '/api/docs', ''
