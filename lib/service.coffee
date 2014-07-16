@@ -28,7 +28,7 @@ module.exports =
         headers =
             name: '42-name'
             org:  '42-org'
-            role: '42-org'
+            role: '42-role'
 
         Object.keys(headers).forEach (key) ->
             restify.CORS.ALLOW_HEADERS.push(headers[key])
