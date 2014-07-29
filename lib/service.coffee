@@ -18,12 +18,12 @@ module.exports =
 
     errors: errors
 
-    Service: ({name, version, handlers, models}) ->
+    Service: ({name, version, handlers, models, log}) ->
         throw new Error "`name` parameter is required."     if not name
         throw new Error "`handlers` parameter is required." if not handlers
         throw new Error "`version` parameter is required."  if not version
 
-        server = restify.createServer {formatters}
+        server = restify.createServer {name, formatters, log}
 
         headers =
             name: '42-name'
