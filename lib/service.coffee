@@ -118,7 +118,9 @@ processHandlers = do ->
             {action} = handler
 
             handler.action = (req, res, next) ->
-                Promise.cast(action.call(handler, req, res))
+                result = action.call(handler, req, res)
+                return if not result?
+                Promise.cast(result)
                 .then (result) ->
                     res.send 200, result
                     next()
