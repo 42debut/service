@@ -14,7 +14,8 @@ class HttpError extends Error
         return result
     toString: ->
         JSON.stringify @serialize(), null, 2
-
+    writeTo: (res) ->
+        res.write(this.toString())
 
 class HttpNotFoundError extends HttpError
     code: 404
