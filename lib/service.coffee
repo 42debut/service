@@ -141,7 +141,10 @@ processHandlers = do ->
 
                 action.call(handler, req, res)
                 .then (result) ->
-                    res.send 200, result
+                    if handler.render
+                        handler.render(result, res)
+                    else
+                        res.send 200, result
                     next()
                 .catch (error) ->
                     if error instanceof (errors.http.HttpError)
