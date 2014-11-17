@@ -3,19 +3,24 @@
 # and add a `code` property.
 
 class HttpError extends Error
+
     constructor: (options = {}) ->
+        if typeof options is "string"
+            [options, message] = [{}, options]
+            options.message = message
         @code    = options.code    or @code or 500
         @message = options.message or 'Server Error'
         @data    = options.data    or {}
         @type    = options.type    or @constructor.name
+
     serialize: ->
         result = {@code, @message, @type}
         result.data = @data if @data
         return result
+
     toString: ->
         JSON.stringify @serialize(), null, 2
-    writeTo: (res) ->
-        res.write(this.toString())
+
 
 class HttpNotFoundError extends HttpError
     code: 404

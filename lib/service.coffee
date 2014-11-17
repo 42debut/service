@@ -1,11 +1,12 @@
 
 Promise = require 'bluebird'
-Promise.longStackTraces()
+
 
 {EventEmitter} = require 'events'
 bunyan         = require 'bunyan'
 restify        = require 'restify'
 swagger        = require 'swagger-node-restify'
+AuthLib        = require 'auth-lib'
 formatters     = require './formatters'
 errors         = require './errors'
 
@@ -40,10 +41,7 @@ module.exports =
         server.use restify.queryParser()
 
         server.use (req, res, next) ->
-            req.user = Object.keys(headers).reduce ((result, key) ->
-                result[key] = req.headers[key]
-                return result
-            ), {}
+            req.user = AuthLib.getUser(req)
             next()
 
         swagger.configureSwaggerPaths '', '/api/docs', ''
@@ -113,14 +111,35 @@ processHandlers = do ->
             handler.spec.nickname ?= name
             return handler
 
-        # Wrap handler action for promise support and better error handling
+
+        # Add role checking step and promise support
+        (name, handler) ->
+            {action, checkAuthorization} = handler
+
+            checkAuthorization ?= -> true
+
+            if typeof checkAuthorization is "string"
+                checkAuthorization = do ->
+                    role = checkAuthorization
+                    return (user) -> user.role is role
+
+            handler.action = (req, res, next) -> Promise.try ->
+                user = AuthLib.getUser(req)
+                Promise.cast(checkAuthorization user, req)
+                .then (isAuthorized) ->
+                    throw new errors.http.HttpForbiddenError() if not isAuthorized
+                    return Promise.cast(action.call handler, req, res)
+
+            return handler
+
+
+        # Wrap handler action for better error handling
         (name, handler) ->
             {action} = handler
 
             handler.action = (req, res, next) ->
-                result = action.call(handler, req, res)
-                return if not result?
-                Promise.cast(result)
+
+                action.call(handler, req, res)
                 .then (result) ->
                     res.send 200, result
                     next()
@@ -168,26 +187,46 @@ class Service extends EventEmitter
 
     constructor: ({@name, @version, @server, @swagger, @handlers, @models}) ->
 
-    listen: (port, host, base) ->
+    listen: (port, host, base, callback) ->
+
+        [port, host, base, callback] = \
+        switch arguments.length
+            when 0 then do ->
+                return [null, null, null, null]
+            when 1 then do ->
+                return [port, null, null, null] if typeof port in ["string", "number"]
+                return [null, null, null, port]
+            when 2 then do ->
+                return [port, host, null, null] if typeof host is "string"
+                return [port, null, null, host]
+            when 3 then do ->
+                return [port, host, base, null] if typeof host is "string" and typeof base is "string"
+                return [port, host, null, base]
+            else do ->
+                return [port, host, base, callback]
+
         port ?= 80
         host ?= 'localhost'
+        base ?= "http://#{host}:#{port}"
+
         console.log "`#{@name}` listening on http://#{host}:#{port}\n"
 
         console.log "Docs can be found at:"
         console.log "http://#{host}:#{port}/docs\n\n"
 
-        @swagger.configure base or "http://#{host}:#{port}", "#{@version}"
-        @server.listen port, host
+        @swagger.configure base, "#{@version}"
+        @server.listen port, host, callback
         return @
 
-    close: (timeout = 30000) ->
-        timeout = Math.max(0, parseInt(timeout)) or \
-        throw new Error("`timeout` argument `#{timeout}` is not valid.")
-        deferred = Promise.defer()
+    close: (timeout = 30000) -> new Promise (resolve, reject) =>
+        timeout = Math.max(0, parseInt(timeout))
+        throw new Error("`timeout` argument `#{timeout}` is not valid.") if Number.isNaN(timeout)
+        timedOut = false
+        timer = setTimeout ->
+            timedOut = true
+            return reject new Error("server timed out while closing")
+        , timeout
         @server.close ->
             clearTimeout(timer)
-            return deferred.resolve()
-        timer = setTimeout ->
-            return deferred.reject('timed-out')
-        , timeout
-        return deferred.promise
+            return if timedOut
+            return resolve()
