@@ -33,7 +33,7 @@ class InvalidArgumentError extends ControllerError
         super httpErrors.HttpBadRequestError, {@argument, @value}
 
 
-class ResouceAlreadyExistsError extends ControllerError
+class ResourceAlreadyExistsError extends ControllerError
     # call this like so: new InvalidArgumentError({theInvalidArgument})
     constructor: (argument) ->
         throw new ControllerErrorInvalidArgumentError('argument') if not _.isObject(argument)
@@ -69,7 +69,7 @@ module.exports = {
     MissingArgumentError
     InvalidArgumentError
     ResourceNotFoundError
-    ResouceAlreadyExistsError
+    ResourceAlreadyExistsError
     InternalError
 }
 
