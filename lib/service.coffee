@@ -28,6 +28,7 @@ module.exports =
 
         headers =
             token: '42-auth-token'
+            id:    '42-id'
             name:  '42-name'
             org:   '42-org'
             role:  '42-role'
