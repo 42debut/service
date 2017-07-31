@@ -5,6 +5,8 @@ Promise = require 'bluebird'
 {EventEmitter} = require 'events'
 bunyan         = require 'bunyan'
 restify        = require 'restify'
+CorsMiddleware = require 'restify-cors-middleware'
+RestifyPlugins = require 'restify-plugins'
 swagger        = require 'swagger-node-restify'
 AuthLib        = require 'auth-lib'
 formatters     = require './formatters'
@@ -33,14 +35,17 @@ module.exports =
             org:   '42-org'
             role:  '42-role'
 
-        Object.keys(headers).forEach (key) ->
-            restify.CORS.ALLOW_HEADERS.push(headers[key])
+        cors = CorsMiddleware
+            allowHeaders: Object.keys(headers).map((x) -> headers[x])
+            origins: ['*']
+            exposeHeaders: []
 
-        server.use restify.acceptParser server.acceptable
-        server.use restify.CORS()
-        server.use restify.fullResponse()
-        server.use restify.bodyParser()
-        server.use restify.queryParser()
+        server.pre cors.preflight
+        server.use RestifyPlugins.acceptParser(server.acceptable)
+        server.use cors.actual
+        server.use RestifyPlugins.fullResponse()
+        server.use RestifyPlugins.bodyParser()
+        server.use RestifyPlugins.queryParser()
 
         server.use (req, res, next) ->
             req.user = AuthLib.getUser(req)
@@ -56,7 +61,7 @@ module.exports =
                 res.send 302
             return next()
 
-        server.get /^\/docs(\/.*)?$/, restify.serveStatic
+        server.get /^\/docs(\/.*)?$/, RestifyPlugins.serveStatic
             directory: __dirname + '/..'
             default:  'index.html'
 
