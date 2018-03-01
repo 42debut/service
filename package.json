@@ -23,8 +23,9 @@
     "bunyan": "~0.22.1",
     "coffee-script": "~1.6.3",
     "lodash": "~2.2.1",
-    "restify": "~2.5.0",
-    "send": "~0.1.4",
+    "restify": "^6.3.4",
+    "restify-cors-middleware": "^1.1.0",
+    "send": "^0.16.2",
     "swagger-node-restify": "git://github.com/42technologies/swagger-node-restify.git#master"
   },
   "devDependencies": {
