@@ -25,7 +25,6 @@
     "lodash": "^4.17.11",
     "restify": "^5.0.1",
     "restify-cors-middleware": "^1.0.1",
-    "restify-plugins": "^1.6.0",
     "send": "^0.16.2",
     "swagger-node-restify": "42technologies/swagger-node-restify.git#master"
   },
