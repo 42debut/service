@@ -19,16 +19,16 @@
   "license": "MIT",
   "dependencies": {
     "auth-lib": "git+ssh://git@bitbucket.org:42debut/auth-lib.git#master",
-    "bluebird": "^2.3.11",
-    "bunyan": "~0.22.1",
+    "bluebird": "^2.11.0",
+    "bunyan": "^1.8.12",
     "coffee-script": "~1.6.3",
     "lodash": "~2.2.1",
     "restify": "~2.5.0",
-    "send": "~0.1.4",
+    "send": "^0.17.1",
     "swagger-node-restify": "git://github.com/42technologies/swagger-node-restify.git#master"
   },
   "devDependencies": {
     "frisby": "^0.8.3",
-    "jasmine-node": "^1.14.5"
+    "jasmine-node": "^3.0.0"
   }
 }
